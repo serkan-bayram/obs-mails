@@ -1,3 +1,6 @@
 lastFiveMails.txt
 auth.txt
 venv
+token.txt
+telegram_id.txt
+__pycache__
