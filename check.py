@@ -24,7 +24,6 @@ def login(session):
             lines = f.readlines()
             username = lines[0]
             password = lines[1]
-
     except FileNotFoundError:
         print("Create an auth.txt file and enter your credentials\nFirst line is username and second line is password")
         return False
@@ -49,8 +48,8 @@ def login(session):
         'sec-ch-ua-platform': '"Linux"',
     }
 
-    payload = {"txtLoginKullaniciAdi": username,
-               "txtLoginSifre": password,
+    payload = {"txtLoginKullaniciAdi": username.strip(),
+               "txtLoginSifre": password.strip(),
                "__VIEWSTATE": viewstate,
                "__VIEWSTATEGENERATOR": viewstategenerator,
                "__EVENTVALIDATION": eventvalidation,
@@ -62,6 +61,10 @@ def login(session):
 
     login_request = session.post(
         LOGIN_URL, headers=headers, data=payload)
+
+    soup = BeautifulSoup(login_request.content, 'html.parser')
+
+    print(soup.prettify())
 
     return login_request.status_code
 
@@ -90,6 +93,7 @@ def get_last_five_mails(session):
     mails_request = session.post(MAILS_URL, headers=headers)
 
     if mails_request.status_code != 200:
+        print(mails_request.status_code)
         return [], False
 
     mails = BeautifulSoup(
@@ -202,7 +206,9 @@ def check():
         return False, "Can't log in."
 
     print("Logged in.")
+
     last_five, response = get_last_five_mails(session=session)
+
     if not response:
         return False, "Can't get mails from OBS."
 
