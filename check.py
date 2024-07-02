@@ -1,10 +1,15 @@
 import requests
 from bs4 import BeautifulSoup
 import json
+import time
 
 LOGIN_URL = "https://obs.bilecik.edu.tr/login.aspx"
 MAILS_URL = "https://obs.bilecik.edu.tr/ogrenci/ogrencianasayfa.aspx/GelenKutusu"
 READ_MAIL = "https://obs.bilecik.edu.tr/ogrenci/ogrencianasayfa.aspx/MesajOku"
+DELETE_MAIL = "https://obs.bilecik.edu.tr/ogrenci/ogrencianasayfa.aspx/GelenSil"
+
+# Full name of teacher
+blockedTeachers = ["Nazım İMAL"]
 
 
 def login(session):
@@ -64,9 +69,59 @@ def login(session):
 
     soup = BeautifulSoup(login_request.content, 'html.parser')
 
-    print(soup.prettify())
+    # print(soup.prettify())
 
     return login_request.status_code
+
+
+def get_all_mails(session):
+    headers = {
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9,tr;q=0.8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Content-Type': 'application/json; charset=utf-8',
+        'Origin': 'https://obs.bilecik.edu.tr',
+        'Pragma': 'no-cache',
+        'Referer': 'https://obs.bilecik.edu.tr/ogrenci/ogrencianasayfa.aspx',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'X-Requested-With': 'XMLHttpRequest',
+        'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Linux"',
+    }
+
+    mails_request = session.post(MAILS_URL, headers=headers)
+
+    if mails_request.status_code != 200:
+        print(mails_request.status_code)
+        return [], False
+
+    mails = BeautifulSoup(
+        mails_request.content, 'html.parser')
+
+    # Mails
+    json_data = mails.prettify()
+
+    parsed_json = json.loads(json_data)
+
+    messages = json.loads(parsed_json["d"])
+
+    for message in messages:
+        for blockedTeacher in blockedTeachers:
+            if blockedTeacher.lower() in message['Gonderen'].lower():
+                time.sleep(5)
+
+                payload = {"MesajNo": str(message['MesajNo'])}
+
+                request = session.post(
+                    DELETE_MAIL, json=payload, headers=headers)
+
+                print("Deleting mail: ",
+                      message['Gonderen'], request.status_code)
 
 
 # Gets the latest five mail from OBS
@@ -207,6 +262,10 @@ def check():
 
     print("Logged in.")
 
+    get_all_mails(session=session)
+
+    time.sleep(10)
+
     last_five, response = get_last_five_mails(session=session)
 
     if not response:
@@ -222,5 +281,5 @@ def check():
     print("Last five mails are saved.")
 
     # New mails will be shown here.
-    print(messages)
+    # print(messages)
     return True, messages
